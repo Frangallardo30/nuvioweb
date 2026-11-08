@@ -20,6 +20,10 @@
 
 ## About
 
+### Personal Netlify deployment
+
+This copy includes a Netlify configuration and provider API adapters. See [Netlify deployment and limitations](docs/netlify.md). The original project documentation and credits follow below.
+
 NuvioWeb is an independent, GPL-3.0-licensed community fork of Nuvio, maintained by alphasquare.
 
 It provides a client-side playback interface with support for the Stremio addon ecosystem, enabling content discovery and source resolution through user-installed extensions.

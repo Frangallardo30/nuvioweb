@@ -19,6 +19,8 @@
   },
   "scripts": {
     "build": "node ./scripts/build.mjs",
+    "build:netlify": "node ./scripts/build-netlify.mjs",
+    "test:netlify": "node --test netlify/tests/*.test.mjs",
     "prepare": "husky || true",
     "test": "node --test \"**/*.test.mjs\"",
     "build:on-release": "node ./scripts/release-build-poller.mjs",

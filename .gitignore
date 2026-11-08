@@ -9,6 +9,7 @@ local.properties
 !.env.example
 local.example.properties
 node_modules/
+.netlify/
 *.ipk
 *.wgt
 dist/
