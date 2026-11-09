@@ -5,6 +5,7 @@ import {
 } from "../../../core/offline/browserOfflineDownloads.js";
 import { I18n } from "../../../i18n/index.js";
 import { PlayerController } from "../../../core/player/playerController.js";
+import { canUseMoviForAudio } from "../../../core/player/movi/moviCapability.js";
 import {
   browserPlayerChrome,
   browserPlayerControls,
@@ -265,9 +266,12 @@ export const BrowserPlayerPresentationScreen = {
       !entries.length && this.directTrackError && !this.directTrackLoading
         ? `<button type="button" class="nv-choice player-control-btn" data-action="retryAudioTracks"><span class="nv-copy">${playerText(t("player_audio_tracks_retry", "Retry audio tracks"))}</span></button>`
         : "";
+    const compatibility = canUseMoviForAudio(entries)
+      ? `<button type="button" class="nv-choice player-control-btn" data-action="compatibilityAudio"><span class="nv-copy">${playerText(t("player_audio_compatibility", "Play with compatibility player"))}<small>${playerText(t("player_audio_compatibility_help", "Decode E-AC3 / AC3 in this browser. No server required."))}</small></span></button>`
+      : "";
     dialog.innerHTML =
       playerPanelHead(t("audio_dialog_title", "Audio"), "audioTrack") +
-      `<div class="nv-panel-body player-audio-track-list" aria-busy="${Boolean(this.directTrackLoading)}">${entries.length ? entries.map((e, index) => playerChoice({ label: e.label, secondary: e.secondary, selected: Boolean(e.selected), disabled: e.supported === false, attributes: `data-audio-column="tracks" data-audio-index="${index}"`, classes: "player-dialog-item" })).join("") : emptyState}${retry}<div class="nv-mini-row"><span>${playerText(t("player_audio_boost", "Audio boost"))}</span><span class="nv-value">${Math.round(Number(this.audioAmplificationDb || 0))} dB</span></div></div>`;
+      `<div class="nv-panel-body player-audio-track-list" aria-busy="${Boolean(this.directTrackLoading)}">${compatibility}${entries.length ? entries.map((e, index) => playerChoice({ label: e.label, secondary: e.secondary, selected: Boolean(e.selected), disabled: e.supported === false, attributes: `data-audio-column="tracks" data-audio-index="${index}"`, classes: "player-dialog-item" })).join("") : emptyState}${retry}<div class="nv-mini-row"><span>${playerText(t("player_audio_boost", "Audio boost"))}</span><span class="nv-value">${Math.round(Number(this.audioAmplificationDb || 0))} dB</span></div></div>`;
     return true;
   },
   renderProposalFile() {

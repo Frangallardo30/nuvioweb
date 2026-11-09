@@ -53,6 +53,7 @@ import { createStreamProber, streamProbeIdentity } from "../../../core/player/st
 import { assessPlaybackCapabilities } from "../../../core/player/playbackCapabilities.js";
 import { classifyPlayback } from "../../../core/player/playbackMethod.js";
 import { getDeviceCapabilities } from "../../../core/player/deviceCapabilities.js";
+import { canUseMoviForAudio } from "../../../core/player/movi/moviCapability.js";
 import {
   StartupLoadingOverlay,
   usesUnifiedStartup
@@ -18864,6 +18865,19 @@ ${!Environment.isBrowser() ? `<button type="button" class="player-episode-stream
 
     if (action === "retryAudioTracks") {
       void this.loadDirectTrackData({ force: true });
+      return;
+    }
+
+    if (action === "compatibilityAudio") {
+      if (!canUseMoviForAudio(this.getAudioEntries())) return;
+      const source = this.activePlaybackUrl;
+      if (!/^https?:/i.test(source || "")) return;
+      void Router.navigate("moviPlayer", {
+        ...this.params,
+        streamUrl: source,
+        requestHeaders: this.getCurrentStreamRequestHeaders(),
+        resumePositionMs: Math.max(0, this.getPlaybackCurrentSeconds()) * 1000
+      });
       return;
     }
 

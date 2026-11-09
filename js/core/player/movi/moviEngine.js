@@ -1,6 +1,6 @@
 // Loading and tearing down the movi element.
 //
-// The element is a 410 KB module and its WASM blob another ~2 MB, so it is
+// The element includes its software decoders in a roughly 12 MB module, so it is
 // imported at the moment a playback needs it — never for a profile that kept the
 // built-in player. The local copy wins when the build shipped one; the CDN is
 // the same fallback the streaming libraries already use (see
@@ -80,6 +80,7 @@ export function mountMoviElement({
   const element = documentRef.createElement("movi-player");
   element.setAttribute("controls", "");
   element.setAttribute("playsinline", "");
+  element.setAttribute("autoplay", "");
   // The route owns fullscreen. movi draws to a canvas, so it cannot enter native
   // fullscreen the way a <video> can: its own button only fills the viewport with
   // the picture, while the subtitle layer lives outside that box and disappears.

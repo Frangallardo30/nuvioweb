@@ -2460,4 +2460,10 @@
     <string name="upcoming_section_title">Próximos</string>
     <string name="player_audio_tracks_unreadable">No se pudieron leer las pistas de audio de esta fuente. Reintentá o elegí otra fuente.</string>
     <string name="player_audio_tracks_retry">Volver a buscar pistas de audio</string>
+    <string name="player_audio_compatibility">Usar reproductor compatible</string>
+    <string name="player_audio_compatibility_help">Reproducí E-AC3 y AC3 con decodificación en tu equipo.</string>
+    <string name="settings_player_engine">Reproductor interno</string>
+    <string name="settings_player_engine_native">Estándar</string>
+    <string name="settings_player_engine_movi">Compatible (Movi)</string>
+    <string name="settings_player_engine_help">Permite reproducir más formatos de audio. El rendimiento depende de tu equipo.</string>
 </resources>

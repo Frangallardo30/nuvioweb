@@ -7651,6 +7651,20 @@ export const SettingsScreen = {
   },
 
   renderPlaybackSection(model) {
+    this.actionMap.set("playback:playerEngine", () => {
+      this.openOptionDialog({
+        title: t("settings_player_engine", {}, "Internal player"),
+        options: [
+          { id: "native", label: t("settings_player_engine_native", {}, "Standard") },
+          ...(hasWebCodecs()
+            ? [{ id: "movi", label: t("settings_player_engine_movi", {}, "Compatibility (Movi)") }]
+            : [])
+        ],
+        selectedId: PlayerSettingsStore.get().playerEngine,
+        returnFocusKey: "playback:playerEngine",
+        onSelect: (option) => PlayerSettingsStore.set({ playerEngine: option.id })
+      });
+    });
     const hdrSupport = getHdrPlaybackSupport();
     const isDesktopBrowser = isDesktopSettingsBrowser();
     this.ensureExpandedState("playback");
@@ -8848,7 +8862,22 @@ export const SettingsScreen = {
             : ""
         }
 `;
-    const generalBody = `<div class="settings-stack">${externalRows}${nextEpisodeRows}${skipIntroRows}${playerInformationRows}${autoSkipRows}${clockRows}${nextEpisodeDetailsRows}${autoSelectionRows}</div>`;
+    const engineRow = hasWebCodecs()
+      ? this.renderActionRow({
+          focusKey: "playback:playerEngine",
+          title: t("settings_player_engine", {}, "Internal player"),
+          subtitle: t(
+            "settings_player_engine_help",
+            {},
+            "Compatibility mode decodes E-AC3 / AC3 on your device. Source access and device performance still apply."
+          ),
+          value:
+            model.player.playerEngine === "movi"
+              ? t("settings_player_engine_movi", {}, "Compatibility (Movi)")
+              : t("settings_player_engine_native", {}, "Standard")
+        })
+      : "";
+    const generalBody = `<div class="settings-stack">${externalRows}${engineRow}${nextEpisodeRows}${skipIntroRows}${playerInformationRows}${autoSkipRows}${clockRows}${nextEpisodeDetailsRows}${autoSelectionRows}</div>`;
 
     this.actionMap.set("playback:filenameRouting", () =>
       PlayerSettingsStore.set({
