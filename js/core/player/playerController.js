@@ -1865,6 +1865,7 @@ export const PlayerController = {
         video: this.video,
         requestHeaders,
         expectedAudio: playbackPlan.expectedAudio,
+        audioConversion: playbackPlan.audioConversion,
         cacheMaxMiB: REMUX_CLIENT_CACHE_MAX_MIB,
         onError: (reason) => {
           if (this.isPlaybackRequestActive(playToken, requestedUrl))

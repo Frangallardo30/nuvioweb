@@ -3235,4 +3235,5 @@
     <string name="settings_player_engine_native">Standard</string>
     <string name="settings_player_engine_movi">Compatibility (Movi)</string>
     <string name="settings_player_engine_help">Play more audio formats on this device. Performance depends on your device.</string>
+    <string name="player_audio_native_video">Try native video</string>
 </resources>

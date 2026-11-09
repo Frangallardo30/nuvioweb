@@ -57,6 +57,8 @@ export function shouldRoutePlayerToMovi(
   settings = null,
   { webCodecs = hasWebCodecs() } = {}
 ) {
+  if (params?.playbackPlan?.route === "client" && params.playbackPlan.audioConversion === "opus")
+    return false;
   const source = String(params?.streamUrl || "");
   // A downloaded file arrives as a blob: URL, and that is the one case where movi
   // needs no permission from anyone: the bytes are already local, so there is no

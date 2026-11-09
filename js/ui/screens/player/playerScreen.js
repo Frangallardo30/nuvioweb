@@ -54,6 +54,8 @@ import { assessPlaybackCapabilities } from "../../../core/player/playbackCapabil
 import { classifyPlayback } from "../../../core/player/playbackMethod.js";
 import { getDeviceCapabilities } from "../../../core/player/deviceCapabilities.js";
 import { canUseMoviForAudio } from "../../../core/player/movi/moviCapability.js";
+import { nativeAudioCompatibilityPlan } from "../../../core/player/nativeAudioCompatibility.js";
+import { videoCodecString } from "../../../core/player/playbackCapabilities.js";
 import {
   StartupLoadingOverlay,
   usesUnifiedStartup
@@ -18872,12 +18874,31 @@ ${!Environment.isBrowser() ? `<button type="button" class="player-episode-stream
       if (!canUseMoviForAudio(this.getAudioEntries())) return;
       const source = this.activePlaybackUrl;
       if (!/^https?:/i.test(source || "")) return;
-      void Router.navigate("moviPlayer", {
+      const probe = this.directTrackProbe;
+      const index = Math.max(
+        0,
+        probe?.audioStreams?.findIndex((track) => track.default)
+      );
+      const params = {
         ...this.params,
         streamUrl: source,
         requestHeaders: this.getCurrentStreamRequestHeaders(),
         resumePositionMs: Math.max(0, this.getPlaybackCurrentSeconds()) * 1000
-      });
+      };
+      void (async () => {
+        const plan = await nativeAudioCompatibilityPlan({
+          sourceUrl: source,
+          videoCodec: videoCodecString(probe || {}),
+          audioCodec: probe?.audioStreams?.[index]?.codec,
+          audioIndex: index,
+          startSeconds: params.resumePositionMs / 1000
+        });
+        if (this.activePlaybackUrl !== source || this.playerBackNavigationInProgress) return;
+        await Router.navigate(plan ? "player" : "moviPlayer", {
+          ...params,
+          ...(plan ? { playbackPlan: plan } : {})
+        });
+      })();
       return;
     }
 

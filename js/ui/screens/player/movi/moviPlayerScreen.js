@@ -18,12 +18,18 @@ import {
   segmentLabel
 } from "../../../../core/player/movi/skipSegments.js";
 import { endsAtLabel, formatWallClock } from "../../../../core/player/movi/clockText.js";
+import {
+  canUseNativeAudioCompatibility,
+  nativeAudioCompatibilityPlan
+} from "../../../../core/player/nativeAudioCompatibility.js";
+import { I18n } from "../../../../i18n/index.js";
 
 const STAGE_ATTRIBUTE = "data-movi-stage";
 const BACK_ATTRIBUTE = "data-movi-back";
 const FULLSCREEN_ATTRIBUTE = "data-movi-fullscreen";
 const SKIP_ATTRIBUTE = "data-movi-skip";
 const CLOCK_ATTRIBUTE = "data-movi-clock";
+const NATIVE_AUDIO_ATTRIBUTE = "data-movi-native-audio";
 
 // The built-in player writes on a similar cadence: often enough that closing the
 // tab loses nothing worth keeping, rarely enough that it is not a write per
@@ -75,6 +81,7 @@ export const MoviPlayerScreen = {
         <div ${STAGE_ATTRIBUTE} style="position:absolute;inset:0;"></div>
         <button type="button" ${BACK_ATTRIBUTE} style="position:absolute;top:12px;left:12px;z-index:3;padding:10px 14px;border:0;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font:inherit;">Back</button>
         <button type="button" ${FULLSCREEN_ATTRIBUTE} style="position:absolute;top:12px;right:12px;z-index:3;padding:10px 14px;border:0;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font:inherit;">Fullscreen</button>
+        <button type="button" ${NATIVE_AUDIO_ATTRIBUTE} hidden style="position:absolute;top:12px;left:100px;z-index:3;padding:10px 14px;border:0;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font:inherit;">${escapeHtml(I18n.t("player_audio_native_video", {}, "Try native video"))}</button>
         <button type="button" ${SKIP_ATTRIBUTE} hidden style="position:absolute;left:12px;bottom:104px;z-index:3;padding:11px 18px;border:0;border-radius:999px;background:rgba(15,15,15,.82);color:#fff;font:600 14px/1.2 system-ui,sans-serif;">Skip intro</button>
         <div ${CLOCK_ATTRIBUTE} hidden style="position:absolute;right:12px;bottom:104px;z-index:3;text-align:right;color:#fff;font:13px/1.35 system-ui,sans-serif;text-shadow:0 1px 3px rgba(0,0,0,.9);">
           <div data-movi-clock-time>--:--</div>
@@ -88,6 +95,9 @@ export const MoviPlayerScreen = {
     });
     this.container.querySelector(`[${FULLSCREEN_ATTRIBUTE}]`)?.addEventListener("click", () => {
       void this.toggleFullscreen();
+    });
+    this.container.querySelector(`[${NATIVE_AUDIO_ATTRIBUTE}]`)?.addEventListener("click", () => {
+      void this.useNativeAudioCompatibility();
     });
 
     const src = routeSource(params);
@@ -136,6 +146,7 @@ export const MoviPlayerScreen = {
     });
     this.handle.element.style.width = "100%";
     this.handle.element.style.height = "100%";
+    this.handle.element.addEventListener("loadedmetadata", () => this.updateNativeAudioButton());
     this.wireProgress(this.handle.element);
     this.wireViewport();
     this.updateFullscreenButton();
@@ -147,6 +158,54 @@ export const MoviPlayerScreen = {
     void this.loadSkipSegments();
     this.startClock();
     void this.loadSubtitle(stage);
+  },
+
+  nativeAudioSelection() {
+    const player = this.handle?.element?.player;
+    const tracks = player?.getAudioTracks?.() || [];
+    const active = player?.trackManager?.getActiveAudioTrack?.();
+    const audioIndex = tracks.findIndex((track) => track.id === active?.id);
+    return {
+      videoCodec: player?.videoDecoder?.configuredCodec || "",
+      audioCodec: active?.codec,
+      audioIndex
+    };
+  },
+
+  updateNativeAudioButton() {
+    const button = this.container?.querySelector(`[${NATIVE_AUDIO_ATTRIBUTE}]`);
+    if (!button) return;
+    const selection = this.nativeAudioSelection();
+    button.hidden =
+      selection.audioIndex < 0 ||
+      !canUseNativeAudioCompatibility(selection.videoCodec, selection.audioCodec);
+  },
+
+  async useNativeAudioCompatibility() {
+    const button = this.container?.querySelector(`[${NATIVE_AUDIO_ATTRIBUTE}]`);
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    try {
+      const position = Math.max(0, Number(this.handle?.element?.currentTime) || 0);
+      const plan = await nativeAudioCompatibilityPlan({
+        sourceUrl: routeSource(this.params),
+        ...this.nativeAudioSelection(),
+        startSeconds: position
+      });
+      if (this.disposed) return;
+      if (!plan) {
+        button.hidden = true;
+        return;
+      }
+      await Router.navigate("player", {
+        ...this.params,
+        streamUrl: plan.sourceUrl,
+        playbackPlan: plan,
+        resumePositionMs: position * 1000
+      });
+    } finally {
+      button.disabled = false;
+    }
   },
 
   /**
@@ -361,6 +420,7 @@ export const MoviPlayerScreen = {
     this.onTimeUpdate = (event) => {
       const seconds = Number(event?.detail);
       if (!Number.isFinite(seconds)) return;
+      this.updateNativeAudioButton();
       this.positionMs = Math.max(0, Math.trunc(seconds * 1000));
       this.overlay?.setTime(seconds);
       this.syncOverlayGeometry();

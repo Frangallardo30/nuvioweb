@@ -1359,4 +1359,5 @@
     <string name="settings_player_engine_native">Estándar</string>
     <string name="settings_player_engine_movi">Compatible (Movi)</string>
     <string name="settings_player_engine_help">Permite reproducir más formatos de audio. El rendimiento depende de tu equipo.</string>
+    <string name="player_audio_native_video">Probar video nativo</string>
 </resources>
