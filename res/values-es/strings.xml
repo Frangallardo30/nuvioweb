@@ -1351,4 +1351,6 @@
     <string name="cloud_library_error_provider_unavailable">La biblioteca en la nube no está disponible para %1$s.</string>
     <string name="cloud_library_error_disabled">La biblioteca en la nube está deshabilitada.</string>
     <string name="cloud_library_search_clear">Borrar búsqueda</string>
+    <string name="player_audio_tracks_unreadable">No se pudieron leer las pistas de audio de esta fuente. Reintentá o elegí otra fuente.</string>
+    <string name="player_audio_tracks_retry">Volver a buscar pistas de audio</string>
 </resources>

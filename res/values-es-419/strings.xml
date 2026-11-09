@@ -2458,4 +2458,6 @@
     <string name="layout_cw_sort_split_upcoming">Separar fila de próximos</string>
     <string name="layout_cw_sort_split_upcoming_desc">Mueve los episodios que aún no se han emitido a una fila separada de Próximos</string>
     <string name="upcoming_section_title">Próximos</string>
+    <string name="player_audio_tracks_unreadable">No se pudieron leer las pistas de audio de esta fuente. Reintentá o elegí otra fuente.</string>
+    <string name="player_audio_tracks_retry">Volver a buscar pistas de audio</string>
 </resources>

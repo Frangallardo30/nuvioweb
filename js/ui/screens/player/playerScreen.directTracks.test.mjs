@@ -88,11 +88,11 @@ function fixture({ pending = false, mode = "client", native = [], text = [] } = 
   };
   ctx.loadDirectSubtitleData = method(
     "  loadDirectSubtitleData({ confirmedMkv = false } = {}) {",
-    "  async loadDirectTrackData() {",
+    "  async loadDirectTrackData({ force = false } = {}) {",
     globals
   ).loadDirectSubtitleData;
   const load = method(
-    "  async loadDirectTrackData() {",
+    "  async loadDirectTrackData({ force = false } = {}) {",
     "  async switchDirectAudioTrack(",
     globals
   ).loadDirectTrackData;
@@ -172,6 +172,68 @@ test("Direct audio selection reuses copy remux and preserves playback position/s
   assert.equal(played.options.requestedAudioIndex, 1);
   assert.equal(played.options.preservePlaybackState, true);
   assert.equal(played.options.resetSilentAudioState, false);
+});
+
+test("previously discovered source tracks remain selectable without another metadata request", async () => {
+  const f = fixture();
+  f.ctx.getPlayerStreamProbe = () => f.probe;
+  await f.load.call(f.ctx);
+  assert.equal(f.counts().probes, 0);
+  assert.equal(f.ctx.directAudioTracks.length, 2);
+  assert.equal(f.ctx.directTrackError, "");
+});
+
+test("a failed audio read can be retried immediately without changing current playback", async () => {
+  const f = fixture();
+  f.ctx._directTrackProber = {
+    probe: async () => null,
+    failureReason: () => "network-or-cors"
+  };
+  await f.load.call(f.ctx);
+  assert.equal(f.ctx.directTrackError, "network-or-cors");
+  assert.equal(f.ctx.directTrackLoading, false);
+  f.ctx._directTrackProber = { probe: async () => f.probe };
+  await f.load.call(f.ctx, { force: true });
+  assert.equal(f.ctx.directTrackError, "");
+  assert.equal(f.ctx.directAudioTracks.length, 2);
+  assert.equal(f.counts().switched, 0);
+});
+
+test("manual retry shares an in-flight read and a changed source discards its late failure", async () => {
+  const f = fixture({ pending: true });
+  const work = f.load.call(f.ctx);
+  await f.load.call(f.ctx, { force: true });
+  assert.equal(f.counts().probes, 1);
+  f.ctx.activePlaybackUrl = "https://media.test/new.mp4";
+  f.ctx.relayTrackToken++;
+  f.resolve();
+  await work;
+  assert.equal(f.ctx.directTrackProbe, undefined);
+  assert.equal(f.ctx.directTrackError, "");
+});
+
+test("late source inventory re-enables a remembered audio preference", async () => {
+  const f = fixture();
+  f.ctx.startupAudioPreferenceApplied = true;
+  f.ctx.rememberedAudioTrackPreference = { language: "zh" };
+  await f.load.call(f.ctx);
+  assert.equal(f.ctx.startupAudioPreferenceApplied, false);
+});
+
+test("manual language switch keeps an open audio menu available", async () => {
+  const f = fixture();
+  await f.load.call(f.ctx);
+  f.ctx.audioDialogVisible = true;
+  let played;
+  const fn = method("  async switchDirectAudioTrack(entry) {", "  clearRelayTrackData() {", {
+    prepareUnverifiedRemux: async (url) => ({ url, plan: { route: "client" } }),
+    t: (_, __, fallback) => fallback
+  }).switchDirectAudioTrack;
+  f.ctx.playStreamByUrl = async (_url, options) => {
+    played = options;
+  };
+  await fn.call(f.ctx, { supported: true, track: { index: 1 } });
+  assert.equal(played.preserveAudioDialog, true);
 });
 test("a late remux preparation cannot replace a different source", async () => {
   const f = fixture();
@@ -318,7 +380,7 @@ test("Direct audio menu marks the browser default without inventing the selected
 });
 
 test("choosing the already active Direct default does not restart or change preferences", () => {
-  const apply = method("  applyAudioTrack(index,", "  renderAudioDialog() {").applyAudioTrack;
+  const apply = method("  applyAudioTrack(", "  renderAudioDialog() {").applyAudioTrack;
   const ctx = {
     getAudioEntries: () => [{ track: { engine: "direct-default" } }],
     startupAudioFallbackApplied: true,

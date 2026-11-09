@@ -3227,4 +3227,6 @@
     <string name="quick_setup_cors_client">Client remux and direct in-app downloads require CORS permission from the stream host. Direct playback may still work when CORS is blocked.</string>
     <string name="quick_setup_cors_downloads">Direct in-app downloads require CORS permission from the stream host.</string>
     <string name="quick_setup_cors_read_more">Read More</string>
+    <string name="player_audio_tracks_unreadable">Couldn't read this source's audio tracks. Retry or choose another source.</string>
+    <string name="player_audio_tracks_retry">Retry audio tracks</string>
 </resources>
