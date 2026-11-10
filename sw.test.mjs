@@ -2,6 +2,39 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+test("a delayed cache open cannot clone a response already consumed by the page", async () => {
+  const source = (await readFile(new URL("./sw.js", import.meta.url), "utf8"))
+    .replace("__NUVIO_LOCALE_ASSETS__", "[]")
+    .replaceAll("__NUVIO_APP_VERSION__", "test");
+  const handlers = new Map();
+  let release, stored, pending;
+  const opened = new Promise((resolve) => {
+    release = resolve;
+  });
+  new Function("self", "caches", "fetch", source)(
+    {
+      addEventListener: (name, fn) => handlers.set(name, fn),
+      location: { origin: "https://example.test" }
+    },
+    { match: async () => null, open: () => opened },
+    async () => new Response("application bytes")
+  );
+  handlers.get("fetch")({
+    request: { method: "GET", url: "https://example.test/app.bundle.js", mode: "cors" },
+    respondWith: (value) => {
+      pending = value;
+    }
+  });
+  assert.equal(await (await pending).text(), "application bytes");
+  release({
+    put: async (_request, response) => {
+      stored = await response.text();
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(stored, "application bytes");
+});
+
 test("app shell precaches the local IMDb badge and Profile logo but not addon or catalog API responses", async () => {
   const source = await readFile(new URL("./sw.js", import.meta.url), "utf8");
 
@@ -19,7 +52,10 @@ test("external playback push uses privacy-safe text and notification clicks focu
   assert.match(source, /Playback completed\. Tap to return to NuvioWeb\./);
   assert.match(source, /data: \{ type: "external-playback-return" \}/);
   assert.match(source, /self\.addEventListener\("notificationclick"/);
-  assert.match(source, /self\.clients\.matchAll\(\{ type: "window", includeUncontrolled: true \}\)/);
+  assert.match(
+    source,
+    /self\.clients\.matchAll\(\{ type: "window", includeUncontrolled: true \}\)/
+  );
   assert.match(source, /String\(client\.url \|\| ""\)\.startsWith\(scope\)/);
   assert.match(source, /self\.clients\.openWindow\(scope\)/);
   assert.doesNotMatch(source, /webapp:\/\//);

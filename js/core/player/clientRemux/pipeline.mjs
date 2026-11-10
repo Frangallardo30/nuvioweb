@@ -51,7 +51,7 @@ export async function remux({
   start = 0,
   audioIndex = 0,
   expectedAudio = null,
-  audioConversion = null,
+  audioConversion = "auto",
   signal,
   stats = {},
   write,
@@ -88,8 +88,20 @@ export async function remux({
     )
       throw Error("audio-track-unavailable");
     const audio = audioTracks[audioIndex];
-    const convert = audioConversion === "opus" && ["ac3", "eac3"].includes(audio?.codec);
-    if (audioConversion && audioConversion !== "opus") throw Error("audio-conversion-unsupported");
+    const canEncode =
+      typeof globalThis.AudioEncoder?.isConfigSupported === "function" &&
+      (
+        await globalThis.AudioEncoder.isConfigSupported({
+          codec: "opus",
+          sampleRate: 48000,
+          numberOfChannels: 2,
+          bitrate: 128000
+        }).catch(() => null)
+      )?.supported;
+    const convertDolby = audioConversion === "opus" || (audioConversion === "auto" && canEncode);
+    const convert = convertDolby && ["ac3", "eac3"].includes(audio?.codec);
+    if (audioConversion && !["opus", "auto"].includes(audioConversion))
+      throw Error("audio-conversion-unsupported");
     const outputAudioCodec = convert ? "opus" : audio?.codec;
     const format = new Mp4OutputFormat({ fastStart: "fragmented" });
     if (!video?.codec || !format.getSupportedVideoCodecs().includes(video.codec))
@@ -119,7 +131,7 @@ export async function remux({
         } catch {
           /* An unreadable alternative must not block the selected track. */
         }
-        const converted = audioConversion === "opus" && ["ac3", "eac3"].includes(track.codec);
+        const converted = convertDolby && ["ac3", "eac3"].includes(track.codec);
         if (converted) codecString = "opus";
         return {
           id: String(track.id),

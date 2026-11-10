@@ -19,7 +19,7 @@ export function createClientRemux({
   cacheMaxMiB = 512,
   requestHeaders = {},
   expectedAudio = null,
-  audioConversion = null,
+  audioConversion = "auto",
   onStatus = () => {},
   onError = () => {},
   onTracks = () => {},
