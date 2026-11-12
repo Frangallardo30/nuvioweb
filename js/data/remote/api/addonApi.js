@@ -1,27 +1,19 @@
-import { httpRequest } from "../../../core/network/httpClient.js";
+import { addonRequest } from "../../../core/network/addonRequest.js";
 
 export const AddonApi = {
-  async getManifest(url) {
-    return httpRequest(url, {
-      includeSessionAuth: false
-    });
+  async getManifest(url, options = {}) {
+    return addonRequest(url, { ...options, resource: "manifest" });
   },
 
-  async getMeta(url) {
-    return httpRequest(url, {
-      includeSessionAuth: false
-    });
+  async getMeta(url, options = {}) {
+    return addonRequest(url, { ...options, resource: "meta" });
   },
 
-  async getStreams(url) {
-    return httpRequest(url, {
-      includeSessionAuth: false
-    });
+  async getStreams(url, options = {}) {
+    return addonRequest(url, { ...options, resource: "streams" });
   },
 
-  async getSubtitles(url) {
-    return httpRequest(url, {
-      includeSessionAuth: false
-    });
+  async getSubtitles(url, options = {}) {
+    return addonRequest(url, { ...options, resource: "subtitles" });
   }
 };

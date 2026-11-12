@@ -12,5 +12,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:netlify
+      - run: npm run lint
+      - run: npm test
       - run: npm run build:netlify
