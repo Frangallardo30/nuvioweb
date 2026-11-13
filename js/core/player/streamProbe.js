@@ -397,16 +397,12 @@ export function createStreamProber({
           const started = Date.now();
           let timer;
           let saved = null;
-          let cacheDeadlineExpired = false;
           try {
             saved = await Promise.race([
               metadataCache.get(key),
               new Promise((resolve) => {
                 timer = setTimeout(
-                  () => {
-                    cacheDeadlineExpired = requestTimeoutMs <= 150;
-                    resolve(null);
-                  },
+                  () => resolve(null),
                   Math.min(150, Math.max(1, requestTimeoutMs))
                 );
               })
@@ -417,7 +413,7 @@ export function createStreamProber({
             clearTimeout(timer);
           }
           requestTimeoutMs = Math.max(0, requestTimeoutMs - (Date.now() - started));
-          if (controller.signal.aborted || cacheDeadlineExpired) return null;
+          if (controller.signal.aborted) return null;
           if (saved && jobGeneration === probeMetadataCacheGeneration()) {
             byteFailures.delete(key);
             reportProbeCacheHit(source || key, "persistent");

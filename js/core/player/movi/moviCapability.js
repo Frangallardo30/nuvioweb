@@ -14,18 +14,6 @@ export function hasWebCodecs(scope = globalThis) {
   return typeof scope?.VideoDecoder === "function";
 }
 
-/** The compatibility engine has software decoders for these audio families. */
-export function canUseMoviForAudio(entries = [], scope = globalThis) {
-  if (!hasWebCodecs(scope)) return false;
-  return entries.some(
-    (entry) =>
-      entry?.supported === false &&
-      ["eac3", "e-ac-3", "ec-3", "ac3", "ac-3"].includes(
-        String(entry.track?.codec || entry.codec || "").toLowerCase()
-      )
-  );
-}
-
 /**
  * Which engine should render this playback?
  *
@@ -57,8 +45,6 @@ export function shouldRoutePlayerToMovi(
   settings = null,
   { webCodecs = hasWebCodecs() } = {}
 ) {
-  if (params?.playbackPlan?.route === "client" && params.playbackPlan.audioConversion === "opus")
-    return false;
   const source = String(params?.streamUrl || "");
   // A downloaded file arrives as a blob: URL, and that is the one case where movi
   // needs no permission from anyone: the bytes are already local, so there is no

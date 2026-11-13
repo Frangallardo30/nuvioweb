@@ -1,21 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  canUseMoviForAudio,
   hasWebCodecs,
   preflightSource,
   shouldRoutePlayerToMovi,
   shouldUseMovi
 } from "./moviCapability.js";
-
-test("compatibility fallback is offered for unsupported Dolby audio on a WebCodecs device", () => {
-  const capable = { VideoDecoder: function () {} };
-  assert.equal(canUseMoviForAudio([{ supported: false, track: { codec: "eac3" } }], capable), true);
-  assert.equal(canUseMoviForAudio([{ supported: false, track: { codec: "ac3" } }], capable), true);
-  assert.equal(canUseMoviForAudio([{ supported: true, track: { codec: "eac3" } }], capable), false);
-  assert.equal(canUseMoviForAudio([{ supported: false, track: { codec: "aac" } }], capable), false);
-  assert.equal(canUseMoviForAudio([{ supported: false, track: { codec: "eac3" } }], {}), false);
-});
 
 test("WebCodecs presence is read from the injected scope", () => {
   assert.equal(hasWebCodecs({}), false);

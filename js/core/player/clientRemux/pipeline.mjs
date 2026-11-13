@@ -17,7 +17,6 @@ import {
   readVideoFragmentTiming,
   MAX_RANDOM_ACCESS_POINTS
 } from "./fragmentTiming.mjs";
-import { createDolbyAudioTranscoder } from "./audioTranscode.mjs";
 
 // Separate component budgets, not a cap on total browser or decoder memory.
 // The muxer closes fragments at keyframes; a 1s minimum does not bound GOP size.
@@ -51,7 +50,6 @@ export async function remux({
   start = 0,
   audioIndex = 0,
   expectedAudio = null,
-  audioConversion = "auto",
   signal,
   stats = {},
   write,
@@ -76,7 +74,7 @@ export async function remux({
       prefetchProfile: "none"
     })
   });
-  let output, audioTranscoder;
+  let output;
   try {
     const video = await input.getPrimaryVideoTrack();
     const audioTracks = await input.getAudioTracks();
@@ -88,28 +86,10 @@ export async function remux({
     )
       throw Error("audio-track-unavailable");
     const audio = audioTracks[audioIndex];
-    const canEncode =
-      typeof globalThis.AudioEncoder?.isConfigSupported === "function" &&
-      (
-        await globalThis.AudioEncoder.isConfigSupported({
-          codec: "opus",
-          sampleRate: 48000,
-          numberOfChannels: 2,
-          bitrate: 128000
-        }).catch(() => null)
-      )?.supported;
-    const convertDolby = audioConversion === "opus" || (audioConversion === "auto" && canEncode);
-    const convert = convertDolby && ["ac3", "eac3"].includes(audio?.codec);
-    if (audioConversion && !["opus", "auto"].includes(audioConversion))
-      throw Error("audio-conversion-unsupported");
-    const outputAudioCodec = convert ? "opus" : audio?.codec;
     const format = new Mp4OutputFormat({ fastStart: "fragmented" });
     if (!video?.codec || !format.getSupportedVideoCodecs().includes(video.codec))
       throw Error("client-output-video-codec-unsupported");
-    if (
-      audio &&
-      (!outputAudioCodec || !format.getSupportedAudioCodecs().includes(outputAudioCodec))
-    )
+    if (audio && (!audio.codec || !format.getSupportedAudioCodecs().includes(audio.codec)))
       throw Error("client-output-audio-codec-unsupported");
     const vc = await video.getDecoderConfig(),
       ac = audio ? await audio.getDecoderConfig() : null;
@@ -131,23 +111,18 @@ export async function remux({
         } catch {
           /* An unreadable alternative must not block the selected track. */
         }
-        const converted = convertDolby && ["ac3", "eac3"].includes(track.codec);
-        if (converted) codecString = "opus";
         return {
           id: String(track.id),
           index,
           label: String(track.name || track.languageCode || "Audio " + (index + 1)).slice(0, 256),
           language: track.languageCode,
-          codec: converted ? "opus" : track.codec,
-          sourceCodec: track.codec,
-          channels: converted ? 2 : config?.numberOfChannels || 0,
+          codec: track.codec,
+          channels: config?.numberOfChannels || 0,
           mime: codecString
             ? `video/mp4; codecs="${await video.getCodecParameterString()},${codecString}"`
             : "",
           supported: Boolean(
-            config &&
-            codecString &&
-            format.getSupportedAudioCodecs().includes(converted ? "opus" : track.codec)
+            config && codecString && format.getSupportedAudioCodecs().includes(track.codec)
           )
         };
       })
@@ -175,15 +150,15 @@ export async function remux({
       duration,
       start: vp.timestamp,
       requested: start,
-      mime: `video/mp4; codecs="${await video.getCodecParameterString()}${audio ? "," + (convert ? "opus" : await audio.getCodecParameterString()) : ""}"`,
+      mime: `video/mp4; codecs="${await video.getCodecParameterString()}${audio ? "," + (await audio.getCodecParameterString()) : ""}"`,
       video: video.codec,
-      audio: outputAudioCodec || null,
-      channels: convert ? 2 : ac?.numberOfChannels,
+      audio: audio?.codec || null,
+      channels: ac?.numberOfChannels,
       firstAudioTimestamp: ap?.timestamp
     });
     stamp("metadataAckMs");
     const vout = new EncodedVideoPacketSource(video.codec),
-      aout = audio ? new EncodedAudioPacketSource(outputAudioCodec) : null;
+      aout = audio ? new EncodedAudioPacketSource(audio.codec) : null;
     let pendingBytes = 0,
       outputPosition = 0,
       outputDrained = Promise.resolve(),
@@ -271,29 +246,16 @@ export async function remux({
     await output.start();
     let firstV = true,
       firstA = true;
-    function account(packet) {
-      pendingBytes += packet.byteLength;
-      stats.pendingPacketBytes = pendingBytes;
-      stats.maxPendingPackets = Math.max(stats.maxPendingPackets || 0, pendingBytes);
-      if (pendingBytes > MAX_PENDING_PACKET_BYTES) throw Error("fragment-packet-budget");
-    }
-    if (convert) {
-      audioTranscoder = await createDolbyAudioTranscoder({
-        codec: audio.codec,
-        onPacket: async (packet, meta) => {
-          account(packet);
-          await aout.add(packet, meta);
-        }
-      });
-      stats.audioConversion = "opus";
-    }
     while (vp || ap) {
       await outputDrained;
       await beforePacket?.();
       if (signal.aborted) throw Error("cancelled");
       const isV = !!vp && (!ap || vp.timestamp <= ap.timestamp);
       const packet = isV ? vp : ap;
-      if (isV || !convert) account(packet);
+      pendingBytes += packet.byteLength;
+      stats.pendingPacketBytes = pendingBytes;
+      stats.maxPendingPackets = Math.max(stats.maxPendingPackets || 0, pendingBytes);
+      if (pendingBytes > MAX_PENDING_PACKET_BYTES) throw Error("fragment-packet-budget");
       stats.packets = (stats.packets || 0) + 1;
       if (isV) {
         await vout.add(packet, firstV ? { decoderConfig: vc } : undefined);
@@ -301,14 +263,10 @@ export async function remux({
         vp = await vs.getNextPacket(vp);
         if (!vp) vout.close();
       } else {
-        if (convert) await audioTranscoder.add(packet);
-        else await aout.add(packet, firstA ? { decoderConfig: ac } : undefined);
+        await aout.add(packet, firstA ? { decoderConfig: ac } : undefined);
         firstA = false;
         ap = await as.getNextPacket(ap);
-        if (!ap) {
-          if (convert) await audioTranscoder.flush();
-          aout.close();
-        }
+        if (!ap) aout.close();
       }
     }
     await output.finalize();
@@ -317,7 +275,6 @@ export async function remux({
     await output?.cancel().catch(() => {});
     throw e;
   } finally {
-    audioTranscoder?.close();
     input.dispose();
   }
 }

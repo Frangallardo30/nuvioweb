@@ -24,10 +24,6 @@ Optional application settings: `TRAKT_CLIENT_ID` (Builds + Functions), `TRAKT_CL
 
 ## Limits
 
-For H.264 video with E-AC3/AC3 audio, **Play with compatibility player** now prefers native MSE video with worker-side Dolby-to-stereo-Opus audio conversion. Movi also offers **Try native video** to switch an already running source while retaining its position and selected language. The video packets are copied; only audio is decoded/encoded using the locally shipped FFmpeg core and WebCodecs AudioEncoder. Source timestamps and audio preroll are preserved. This requires Opus encoding, MSE and browser storage; unsupported devices keep the Movi route. Tests with a synthetic 1920×800, 23.976 fps MKV confirmed native video above 20 fps, decoded sound in both languages, track changes and seeking. Actual provider throughput still limits playback; no source bitrate is reduced.
-
-For E-AC3 / AC3 unsupported by the native browser, the Audio panel offers **Play with compatibility player**. This opens the existing Movi player with a software audio decoder running on the viewer's device and preserves the playback position. Settings → Playback → General → Internal player can also select **Compatibility (Movi)** for future playback. The pinned Movi 0.4.1 module and license are shipped as local, lazy-loaded assets; no transcoding server or paid service is required for this route. WebCodecs and browser-readable source access are still required, and performance depends on the viewer's device. Tested with two synthetic E-AC3 5.1 tracks in Chromium, including actual decoded audio and language switching.
-
 No server-side FFmpeg probe, remux, audio transcoding, video relay or persistent external-player callback/push store is offered on this deployment. Media is requested directly by the browser. Netlify Functions only handle small provider API requests; they do not relay movie files. Use the internal browser player for the first playback test.
 
 Publishing the interface is separate from verifying a particular source on a work network. A working sign-in does not establish playback compatibility. The interface contains no bundled media or personal credentials.

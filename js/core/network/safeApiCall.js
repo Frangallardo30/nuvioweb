@@ -1,5 +1,4 @@
 import { NetworkResult } from "./networkResult.js";
-import { AddonRequestError } from "./addonRequest.js";
 
 export async function safeApiCall(apiCall) {
   try {
@@ -7,9 +6,6 @@ export async function safeApiCall(apiCall) {
 
     return NetworkResult.success(response);
   } catch (error) {
-    if (error instanceof AddonRequestError) {
-      return { ...NetworkResult.error(error.message, error.status), diagnostic: error.diagnostic };
-    }
     if (error instanceof Response) {
       return NetworkResult.error(error.statusText || "HTTP error", error.status);
     }

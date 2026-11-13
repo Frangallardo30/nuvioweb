@@ -1,3 +1,4 @@
+/* global __NUVIO_BUILD_STAMP__ */
 import { probeSourceId } from "./probeDiagnostics.js";
 import { createProbeRangeReader } from "./probeRangeReader.js";
 import { normalizeClientProbeConcurrency } from "./probeMode.js";

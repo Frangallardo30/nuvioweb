@@ -117,10 +117,11 @@ test("selecting relay audio uses existing HLS URL and requests playback-state pr
   let calls = 0,
     options,
     target;
-  const apply = method("  applyAudioTrack(", "  renderAudioDialog() {", {
-    relayAudioUrl,
-    console
-  }).applyAudioTrack;
+  const apply = method(
+    "  applyAudioTrack(index, { automaticFallback = false, rememberSelection = false } = {}) {",
+    "  renderAudioDialog() {",
+    { relayAudioUrl, console }
+  ).applyAudioTrack;
   const ctx = {
     relayTrackContext: relayTrackContext(playback, "/api/transcode", "https://app.test/"),
     getAudioEntries: () => [
@@ -150,14 +151,18 @@ test("selecting relay audio uses existing HLS URL and requests playback-state pr
 test("rendition audio selection uses the active HLS selector without reloading the video", () => {
   let selected = -1,
     reloads = 0;
-  const apply = method("  applyAudioTrack(", "  renderAudioDialog() {", {
-    PlayerController: {
-      setBrowserAudioTrack: (index) => {
-        selected = index;
-        return true;
+  const apply = method(
+    "  applyAudioTrack(index, { automaticFallback = false, rememberSelection = false } = {}) {",
+    "  renderAudioDialog() {",
+    {
+      PlayerController: {
+        setBrowserAudioTrack: (index) => {
+          selected = index;
+          return true;
+        }
       }
     }
-  }).applyAudioTrack;
+  ).applyAudioTrack;
   const ctx = {
     getAudioEntries: () => [
       { browserAudioTrackIndex: 1, track: { engine: "hls.js" }, supported: true }

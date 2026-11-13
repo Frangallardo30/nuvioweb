@@ -148,7 +148,6 @@ async function start(data) {
       start: data.start,
       audioIndex: data.audioIndex,
       expectedAudio: data.expectedAudio,
-      audioConversion: data.audioConversion,
       signal: new AbortController().signal,
       stats,
       fetcher: (url, options) =>

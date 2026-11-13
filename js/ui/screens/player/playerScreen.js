@@ -53,9 +53,6 @@ import { createStreamProber, streamProbeIdentity } from "../../../core/player/st
 import { assessPlaybackCapabilities } from "../../../core/player/playbackCapabilities.js";
 import { classifyPlayback } from "../../../core/player/playbackMethod.js";
 import { getDeviceCapabilities } from "../../../core/player/deviceCapabilities.js";
-import { canUseMoviForAudio } from "../../../core/player/movi/moviCapability.js";
-import { nativeAudioCompatibilityPlan } from "../../../core/player/nativeAudioCompatibility.js";
-import { videoCodecString } from "../../../core/player/playbackCapabilities.js";
 import {
   StartupLoadingOverlay,
   usesUnifiedStartup
@@ -3741,12 +3738,6 @@ export const PlayerScreen = {
   getUnavailableTrackMessage(kind = "audio") {
     if (kind === "audio" && this.directTrackLoading)
       return t("player_loading_audio_tracks", {}, "Loading audio tracks…");
-    if (kind === "audio" && this.directTrackError)
-      return t(
-        "player_audio_tracks_unreadable",
-        {},
-        "Couldn't read this source's audio tracks. Retry or choose another source."
-      );
     if (
       kind === "audio" &&
       !PlayerController.clientRemux &&
@@ -4202,7 +4193,7 @@ export const PlayerScreen = {
     }
   },
 
-  async loadDirectTrackData({ force = false } = {}) {
+  async loadDirectTrackData() {
     const url = this.activePlaybackUrl;
     const video = PlayerController.video;
     if (
@@ -4218,15 +4209,14 @@ export const PlayerScreen = {
       this.directTrackUrl === url &&
       this.directTrackVideo === video &&
       (this.directTrackLoading ||
-        (!force &&
-          (this.directTrackProbe || Date.now() - Number(this.directTrackAttemptAt || 0) < 15000)))
+        this.directTrackProbe ||
+        Date.now() - Number(this.directTrackAttemptAt || 0) < 15000)
     )
       return;
     this.directTrackAttemptAt = Date.now();
     this.directTrackUrl = url;
     this.directTrackVideo = video;
     this.directTrackLoading = true;
-    this.directTrackError = "";
     const token = this.relayTrackToken;
     const candidate = this.getCurrentStreamCandidate();
     const active = () =>
@@ -4243,20 +4233,12 @@ export const PlayerScreen = {
     }));
     try {
       this.loadDirectSubtitleData();
-      this.renderAudioDialog?.();
-      const knownProbe = candidate ? this.getPlayerStreamProbe?.(candidate) : null;
-      const probe = knownProbe?.audioStreams?.length
-        ? { ...knownProbe, playbackCapabilities: await assessPlaybackCapabilities(knownProbe) }
-        : await prober.probe(url, {
-            reason: "tracks",
-            identity: streamProbeIdentity(candidate),
-            // Playback is already running: allow source resolution and a cold
-            // WASM load their own bounded budgets instead of an empty menu.
-            resolveTimeoutMs: PROBE_MODE === "client" ? 5000 : 0
-          });
+      const probe = await prober.probe(url, {
+        reason: "tracks",
+        identity: streamProbeIdentity(candidate)
+      });
       if (!active()) return;
       this.directTrackProbe = probe;
-      this.directTrackError = probe ? "" : prober.failureReason?.(url) || "metadata-unavailable";
       const nativeTracks = PlayerController.getBrowserAudioTracks();
       if (!nativeTracks.length && probe) {
         this.directAudioTracks = (probe.audioStreams || []).map((track) => ({
@@ -4270,12 +4252,10 @@ export const PlayerScreen = {
             probe.playbackCapabilities?.audio?.find((a) => a.index === track.index)?.supported !==
               false
         }));
-        if (this.rememberedAudioTrackPreference) this.startupAudioPreferenceApplied = false;
       }
       if (probe?.container === "mkv") this.loadDirectSubtitleData({ confirmedMkv: true });
     } catch (_) {
       // Track discovery must never interrupt a video that is already playing.
-      if (active()) this.directTrackError = "metadata-unavailable";
     } finally {
       if (active()) {
         this.directTrackLoading = false;
@@ -4312,7 +4292,6 @@ export const PlayerScreen = {
       }
       await this.playStreamByUrl(delivery.url, {
         preservePanel: true,
-        preserveAudioDialog: this.audioDialogVisible,
         preservePlaybackState: true,
         resetSilentAudioState: false,
         sourceCandidate: candidate,
@@ -4346,7 +4325,6 @@ export const PlayerScreen = {
     this.directTrackVideo = null;
     this.directTrackProbe = null;
     this.directTrackLoading = false;
-    this.directTrackError = "";
     this.directAudioTracks = [];
   },
 
@@ -9953,7 +9931,7 @@ export const PlayerScreen = {
       }
       this.attemptPendingPlaybackRestore({ force: true });
 
-      void this.loadDirectTrackData();
+      this.loadDirectSubtitleData();
       this.startupTrackPreferenceReady = true;
       this.refreshTrackDialogs();
       this.updateUiTick();
@@ -12024,7 +12002,6 @@ export const PlayerScreen = {
     streamUrl,
     {
       preservePanel = false,
-      preserveAudioDialog = false,
       resetSilentAudioState = true,
       preservePlaybackState = false,
       preservePendingRestore = false,
@@ -12136,7 +12113,7 @@ export const PlayerScreen = {
     }
 
     this.subtitleDialogVisible = false;
-    this.audioDialogVisible = Boolean(preserveAudioDialog && this.audioDialogVisible);
+    this.audioDialogVisible = false;
     this.speedDialogVisible = false;
     this.selectedAddonSubtitleId = null;
     this.selectedSubtitleTrackIndex = -1;
@@ -14927,7 +14904,7 @@ export const PlayerScreen = {
       }
       this.startupAudioPreferenceApplying = true;
       try {
-        this.applyAudioTrack(rememberedOption.entryIndex, { allowDirectSwitch: true });
+        this.applyAudioTrack(rememberedOption.entryIndex);
       } finally {
         this.startupAudioPreferenceApplying = false;
       }
@@ -16244,10 +16221,7 @@ export const PlayerScreen = {
     this.resetControlsAutoHide();
   },
 
-  applyAudioTrack(
-    index,
-    { automaticFallback = false, rememberSelection = false, allowDirectSwitch = false } = {}
-  ) {
+  applyAudioTrack(index, { automaticFallback = false, rememberSelection = false } = {}) {
     const entries = this.getAudioEntries();
     const selectedEntry = entries[index] || null;
     if (!selectedEntry || selectedEntry.track?.engine === "direct-default") {
@@ -16272,7 +16246,7 @@ export const PlayerScreen = {
 
     if (selectedEntry.track?.engine === "direct-source") {
       // Discovering tracks in a dialog must not restart working Direct playback.
-      if (!rememberSelection && !allowDirectSwitch) return;
+      if (!rememberSelection) return;
       void this.switchDirectAudioTrack(selectedEntry);
       return;
     }
@@ -18862,43 +18836,6 @@ ${!Environment.isBrowser() ? `<button type="button" class="player-episode-stream
       } else {
         this.openAudioDialog();
       }
-      return;
-    }
-
-    if (action === "retryAudioTracks") {
-      void this.loadDirectTrackData({ force: true });
-      return;
-    }
-
-    if (action === "compatibilityAudio") {
-      if (!canUseMoviForAudio(this.getAudioEntries())) return;
-      const source = this.activePlaybackUrl;
-      if (!/^https?:/i.test(source || "")) return;
-      const probe = this.directTrackProbe;
-      const index = Math.max(
-        0,
-        probe?.audioStreams?.findIndex((track) => track.default)
-      );
-      const params = {
-        ...this.params,
-        streamUrl: source,
-        requestHeaders: this.getCurrentStreamRequestHeaders(),
-        resumePositionMs: Math.max(0, this.getPlaybackCurrentSeconds()) * 1000
-      };
-      void (async () => {
-        const plan = await nativeAudioCompatibilityPlan({
-          sourceUrl: source,
-          videoCodec: videoCodecString(probe || {}),
-          audioCodec: probe?.audioStreams?.[index]?.codec,
-          audioIndex: index,
-          startSeconds: params.resumePositionMs / 1000
-        });
-        if (this.activePlaybackUrl !== source || this.playerBackNavigationInProgress) return;
-        await Router.navigate(plan ? "player" : "moviPlayer", {
-          ...params,
-          ...(plan ? { playbackPlan: plan } : {})
-        });
-      })();
       return;
     }
 

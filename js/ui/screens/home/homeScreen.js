@@ -9310,7 +9310,7 @@ export const HomeScreen = {
       }
     };
     const handleWatchProgressChange = (change) => {
-      const { reason, item } = change || {};
+      const { reason, authoritative, item } = change || {};
       if (
         reason === "upsert" &&
         item &&

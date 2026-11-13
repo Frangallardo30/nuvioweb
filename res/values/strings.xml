@@ -3227,13 +3227,4 @@
     <string name="quick_setup_cors_client">Client remux and direct in-app downloads require CORS permission from the stream host. Direct playback may still work when CORS is blocked.</string>
     <string name="quick_setup_cors_downloads">Direct in-app downloads require CORS permission from the stream host.</string>
     <string name="quick_setup_cors_read_more">Read More</string>
-    <string name="player_audio_tracks_unreadable">Couldn't read this source's audio tracks. Retry or choose another source.</string>
-    <string name="player_audio_tracks_retry">Retry audio tracks</string>
-    <string name="player_audio_compatibility">Play with compatibility player</string>
-    <string name="player_audio_compatibility_help">Decode E-AC3 / AC3 on this device.</string>
-    <string name="settings_player_engine">Internal player</string>
-    <string name="settings_player_engine_native">Standard</string>
-    <string name="settings_player_engine_movi">Compatibility (Movi)</string>
-    <string name="settings_player_engine_help">Play more audio formats on this device. Performance depends on your device.</string>
-    <string name="player_audio_native_video">Try native video</string>
 </resources>

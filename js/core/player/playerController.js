@@ -647,9 +647,6 @@ export const PlayerController = {
     return JSON.stringify(facts);
   },
   reportClientRemuxError(reason) {
-    console.warn("[ClientRemux] playback-failure", {
-      reason: /^[a-z0-9-]{1,100}$/.test(String(reason || "")) ? reason : "playback-error"
-    });
     this.lastPlaybackErrorCode = 4;
     this.emitVideoEvent("error", { mediaErrorCode: 4, reason });
   },
@@ -1868,7 +1865,6 @@ export const PlayerController = {
         video: this.video,
         requestHeaders,
         expectedAudio: playbackPlan.expectedAudio,
-        audioConversion: playbackPlan.audioConversion,
         cacheMaxMiB: REMUX_CLIENT_CACHE_MAX_MIB,
         onError: (reason) => {
           if (this.isPlaybackRequestActive(playToken, requestedUrl))

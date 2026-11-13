@@ -539,17 +539,6 @@ async function runBuild() {
       cp(path.join(rootDir, "manifest.webmanifest"), path.join(distDir, "manifest.webmanifest"))
     ]);
     await buildCoreJsBundle();
-    // The compatibility engine decodes formats such as E-AC3 locally. Ship the
-    // pinned, self-contained module so playback does not depend on a third-party CDN.
-    const moviDir = path.join(distDir, "assets", "libs", "movi");
-    await mkdir(moviDir, { recursive: true });
-    await Promise.all([
-      cp(
-        path.join(rootDir, "node_modules/movi-player/dist/element.js"),
-        path.join(moviDir, "element.js")
-      ),
-      cp(path.join(rootDir, "node_modules/movi-player/LICENSE"), path.join(moviDir, "LICENSE"))
-    ]);
     await Promise.all([
       cp(
         path.join(rootDir, "node_modules", "hls.js", "dist", "hls.min.js"),
