@@ -21,6 +21,7 @@
     "build": "node ./scripts/build.mjs",
     "build:netlify": "node ./scripts/build-netlify.mjs",
     "test:netlify": "node --test netlify/tests/*.test.mjs",
+    "test:atucha": "node --test js/core/player/playbackCapabilities.test.mjs js/core/player/remuxClient.test.mjs js/core/player/relayTracks.test.mjs js/core/player/startupAudioGateClient.test.mjs js/ui/screens/player/playerScreen.directTracks.test.mjs js/ui/screens/player/playerScreen.relayTracks.test.mjs netlify/tests/providers.test.mjs",
     "prepare": "husky || true",
     "test": "node --test \"**/*.test.mjs\"",
     "build:on-release": "node ./scripts/release-build-poller.mjs",

@@ -1,4 +1,4 @@
-name: Netlify checks
+name: Atucha playback checks
 on: [push, pull_request]
 permissions:
   contents: read
@@ -12,5 +12,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:netlify
+      - run: npm run test:atucha
       - run: npm run build:netlify
